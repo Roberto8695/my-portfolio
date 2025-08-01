@@ -79,7 +79,7 @@ export function FloatingDockDemo({ onSectionChange }: FloatingDockDemoProps) {
   ];
 
   return (
-    <div className="fixed left-6 top-1/2 transform -translate-y-1/2 z-50">
+    <div className="fixed right-6 top-2/3 sm:top-1/2 transform -translate-y-1/2 z-50">
       <FloatingDock
         mobileClassName="translate-x-0"
         items={links}

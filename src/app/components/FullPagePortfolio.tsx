@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { FloatingDockDemo } from './layout/FloatingDockDemo';
 
 interface FullPagePortfolioProps {
@@ -15,10 +15,32 @@ export default function FullPagePortfolio({ children }: FullPagePortfolioProps) 
 
   const sectionNames = ['Inicio', 'Sobre mí', 'Habilidades', 'Proyectos', 'Contacto'];
 
-  const scrollToSection = (index: number) => {
+  const getSectionName = (index: number) => {
+    const sectionMap: { [key: number]: string } = {
+      0: 'heroSection',
+      1: 'aboutSection', 
+      2: 'skillsSection',
+      3: 'projectsSection',
+      4: 'contactSection'
+    };
+    return sectionMap[index] || 'section';
+  };
+
+  const scrollToSection = useCallback((index: number) => {
     if (isScrolling || !containerRef.current) return;
     
     setIsScrolling(true);
+    
+    // Ejecutar animaciones de salida de la sección actual
+    const currentSectionName = getSectionName(currentSection);
+    const windowWithAnimations = window as typeof window & {
+      [key: string]: (() => void) | undefined;
+    };
+    const leaveFunction = windowWithAnimations[`${currentSectionName}Leave`];
+    if (leaveFunction) {
+      leaveFunction();
+    }
+    
     setCurrentSection(index);
     
     const targetSection = sectionsRef.current[index];
@@ -29,8 +51,16 @@ export default function FullPagePortfolio({ children }: FullPagePortfolioProps) 
       });
     }
     
-    setTimeout(() => setIsScrolling(false), 1000);
-  };
+    // Ejecutar animaciones de entrada de la nueva sección después del scroll
+    setTimeout(() => {
+      const newSectionName = getSectionName(index);
+      const enterFunction = windowWithAnimations[`${newSectionName}Enter`];
+      if (enterFunction) {
+        enterFunction();
+      }
+      setIsScrolling(false);
+    }, 500);
+  }, [isScrolling, currentSection]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -74,11 +104,7 @@ export default function FullPagePortfolio({ children }: FullPagePortfolioProps) 
       }
     };
 
-    // Escuchar eventos de navegación del FloatingDock
-    const handleFloatingDockNavigation = (e: CustomEvent) => {
-      const { sectionIndex } = e.detail;
-      scrollToSection(sectionIndex);
-    };
+    
 
     document.addEventListener('wheel', handleWheel, { passive: false });
     document.addEventListener('keydown', handleKeyDown);
@@ -87,31 +113,9 @@ export default function FullPagePortfolio({ children }: FullPagePortfolioProps) 
       document.removeEventListener('wheel', handleWheel);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentSection, isScrolling, sectionNames.length]);
+  }, [currentSection, isScrolling, sectionNames.length, scrollToSection]);
 
-  // Navegación por dots
-  const renderNavigation = () => (
-    <nav className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40 hidden md:block">
-      <ul className="space-y-4">
-        {sectionNames.map((name, index) => (
-          <li key={index} className="relative group">
-            <button
-              onClick={() => scrollToSection(index)}
-              className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${
-                currentSection === index
-                  ? 'bg-blue-500 border-blue-500'
-                  : 'border-white/50 hover:border-white'
-              }`}
-              aria-label={`Ir a ${name}`}
-            />
-            <span className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-              {name}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
+  
 
   return (
     <>
@@ -138,7 +142,7 @@ export default function FullPagePortfolio({ children }: FullPagePortfolioProps) 
           </div>
         }
       </div>
-      {renderNavigation()}
+     
       <FloatingDockDemo onSectionChange={scrollToSection} />
     </>
   );
